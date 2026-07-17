@@ -28,8 +28,9 @@ const reviews = [
 ];
 
 function Index() {
-  const [form, setForm] = useState({ name: "", phone: "", message: "" });
-  const [sent, setSent] = useState(false);
+  const [form, setForm] = useState({ name: "", phone: "", email: "", message: "" });
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
 
   return (
     <div className="bg-background text-foreground font-display selection:bg-primary/20">
@@ -65,9 +66,28 @@ function Index() {
               <h2 className="text-xl font-bold mb-6 tracking-tight">Pide información o reserva</h2>
               <form
                 className="space-y-4"
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
-                  setSent(true);
+                  if (!form.phone.trim() && !form.email.trim()) {
+                    setStatus("error");
+                    setErrorMsg("Ingresa tu teléfono o correo para poder contactarte.");
+                    return;
+                  }
+                  setStatus("sending");
+                  setErrorMsg("");
+                  try {
+                    const res = await fetch("/api/public/contact", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(form),
+                    });
+                    if (!res.ok) throw new Error("send_failed");
+                    setStatus("sent");
+                    setForm({ name: "", phone: "", email: "", message: "" });
+                  } catch {
+                    setStatus("error");
+                    setErrorMsg("No se pudo enviar. Intenta de nuevo en unos segundos.");
+                  }
                 }}
               >
                 <input
@@ -80,27 +100,45 @@ function Index() {
                   className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
                 />
                 <input
-                  required
-                  maxLength={20}
+                  maxLength={30}
                   type="tel"
-                  placeholder="Teléfono"
+                  placeholder="Teléfono (opcional)"
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
                 />
+                <input
+                  maxLength={255}
+                  type="email"
+                  placeholder="Correo electrónico (opcional)"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                />
+                <p className="text-xs text-muted-foreground -mt-2">
+                  Déjanos al menos un teléfono o correo para responderte.
+                </p>
                 <textarea
-                  maxLength={500}
-                  placeholder="¿En qué podemos ayudarte?"
-                  rows={3}
+                  maxLength={2000}
+                  placeholder="Cuéntanos qué necesitas: reserva, evento, cantidad, fecha, etc."
+                  rows={4}
                   value={form.message}
                   onChange={(e) => setForm({ ...form, message: e.target.value })}
                   className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all resize-none"
                 />
+                {status === "error" && (
+                  <p className="text-sm text-destructive" role="alert">{errorMsg}</p>
+                )}
                 <button
                   type="submit"
-                  className="w-full bg-primary text-primary-foreground py-4 rounded-lg font-bold uppercase tracking-widest text-xs hover:brightness-110 transition-all cursor-pointer shadow-lg shadow-primary/20"
+                  disabled={status === "sending"}
+                  className="w-full bg-primary text-primary-foreground py-4 rounded-lg font-bold uppercase tracking-widest text-xs hover:brightness-110 transition-all cursor-pointer shadow-lg shadow-primary/20 disabled:opacity-60"
                 >
-                  {sent ? "¡Gracias! Te contactaremos" : "Enviar Mensaje"}
+                  {status === "sending"
+                    ? "Enviando..."
+                    : status === "sent"
+                      ? "¡Gracias! Te contactaremos"
+                      : "Enviar Mensaje"}
                 </button>
               </form>
             </div>
