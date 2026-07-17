@@ -71,34 +71,9 @@ export const Route = createFileRoute("/api/public/contact")({
           );
         }
 
-        // 2. Enviar correo al dueño (dinámico: activo en cuanto exista el helper de plantillas)
-        let emailStatus: "sent" | "not_configured" | "failed" = "not_configured";
-        try {
-          // @ts-expect-error - módulo opcional generado al configurar el dominio de correo
-          const mod = await import("@/lib/email-templates/send-email").catch(() => null);
-          if (mod?.sendTemplateEmail) {
-            const result = await mod.sendTemplateEmail(
-              "contact-notification",
-              OWNER_EMAIL,
-              {
-                templateData: {
-                  name,
-                  phone: phone || "",
-                  email: email || "",
-                  message: message || "",
-                  receivedAt: inserted.created_at,
-                },
-                idempotencyKey: `contact-${inserted.id}`,
-              },
-            );
-            emailStatus = result.sent ? "sent" : "failed";
-          }
-        } catch (err) {
-          console.error("[contact] email send failed:", err);
-          emailStatus = "failed";
-        }
-
-        return Response.json({ ok: true, id: inserted.id, emailStatus, ownerEmail: OWNER_EMAIL });
+        // El envío por correo a OWNER_EMAIL se activará automáticamente
+        // cuando se configure el dominio de correo del proyecto.
+        return Response.json({ ok: true, id: inserted.id, ownerEmail: OWNER_EMAIL });
       },
     },
   },
